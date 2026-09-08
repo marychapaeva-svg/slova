@@ -258,20 +258,60 @@ function plan(){
 
 /* ---------- озвучка ---------- */
 let voice = null;
-function pickVoice(){
-  if(!("speechSynthesis" in window)) return;
-  const vs = speechSynthesis.getVoices();
-  voice = vs.filter(function(v){ return /^en-GB/i.test(v.lang); })[0] ||
-          vs.filter(function(v){ return /^en/i.test(v.lang); })[0] || null;
+
+/* учебник пишет сокращения, читать их по буквам нельзя */
+const SPOKEN = [
+  [/\bsb\b/gi, "somebody"], [/\bsmb\b/gi, "somebody"],
+  [/\bsth\b/gi, "something"], [/\bsmth\b/gi, "something"],
+  [/\bo\.?s\.?\b/gi, "oneself"]
+];
+function spoken(text){
+  let s = String(text);
+  SPOKEN.forEach(function(p){ s = s.replace(p[0], p[1]); });
+  return s.replace(/-/g, " ");           // "U-turn" → "U turn", иначе читается рвано
 }
-if("speechSynthesis" in window){ pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+
+function englishVoices(){
+  if(!("speechSynthesis" in window)) return [];
+  try{ return speechSynthesis.getVoices().filter(function(v){ return /^en/i.test(v.lang); }); }
+  catch(e){ return []; }
+}
+/* приоритет: британские, затем американские; внутри — известные качественные голоса */
+const PREFERRED = ["daniel","serena","arthur","kate","oliver","stephanie","samantha","alex","karen","aaron"];
+function pickVoice(){
+  const vs = englishVoices();
+  if(!vs.length) return;
+  if(S.voiceURI){
+    const saved = vs.filter(function(v){ return v.voiceURI === S.voiceURI; })[0];
+    if(saved){ voice = saved; return; }
+  }
+  let best = null, bestScore = -1;
+  vs.forEach(function(v){
+    let sc = /en[-_]GB/i.test(v.lang) ? 10 : (/en[-_]US/i.test(v.lang) ? 8 : 5);
+    const i = PREFERRED.indexOf(String(v.name).toLowerCase().split(/[\s(]/)[0]);
+    if(i >= 0) sc += PREFERRED.length - i;
+    if(/enhanced|premium|neural|siri/i.test(v.name)) sc += 4;
+    if(sc > bestScore){ bestScore = sc; best = v; }
+  });
+  voice = best;
+}
+if("speechSynthesis" in window){
+  pickVoice();
+  speechSynthesis.onvoiceschanged = pickVoice;
+  /* iOS отдаёт список голосов не сразу — пробуем ещё пару раз */
+  setTimeout(pickVoice, 300); setTimeout(pickVoice, 1200);
+}
+
 function say(text){
   if(!("speechSynthesis" in window)) return;
   try{
     speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = "en-GB"; u.rate = 0.85; if(voice) u.voice = voice;
+    const u = new SpeechSynthesisUtterance(spoken(text));
+    u.lang = voice ? voice.lang : "en-GB";
+    u.rate = S.rate || 0.85;
+    if(voice) u.voice = voice;
     speechSynthesis.speak(u);
+    speechSynthesis.resume();            // после блокировки экрана очередь иногда встаёт на паузу
   }catch(e){}
 }
 
@@ -321,12 +361,12 @@ function renderHome(){
     '<button class="btn ghost" id="list">Все слова · '+all.length+'</button>'+
   '</div>'+
   (total===0 && all.length ? '<div class="note" style="text-align:center">Следующее повторение — '+nextDate()+'. Можно прогнать слова перед диктантом.</div>' : "")+
-  '<button class="textbtn" id="backup">Резервная копия прогресса</button>';
+  '<button class="textbtn" id="backup">Голос, скорость, резервная копия</button>';
 
   const g = document.getElementById("go"); if(g) g.onclick = function(){ startSession("daily"); };
   document.getElementById("drill").onclick  = renderDrillPick;
   document.getElementById("list").onclick   = renderList;
-  document.getElementById("backup").onclick = renderBackup;
+  document.getElementById("backup").onclick = renderSettings;
 }
 function estimate(a,b){ return "≈"+Math.max(3, Math.round((a*45 + b*12)/60))+" мин"; }
 function nextDate(){
@@ -639,9 +679,39 @@ function parse(text){
   }).filter(Boolean);
 }
 
-/* ---------- резервная копия прогресса ---------- */
-function renderBackup(){
+/* ---------- настройки: голос, скорость, резервная копия ---------- */
+function renderSettings(){
+  const vs = englishVoices();
+  let voiceBlock;
+  if(!vs.length){
+    voiceBlock =
+    '<div class="card pad"><div class="h3">Голос</div>'+
+      '<div class="note">Английский голос на телефоне не найден, поэтому слова читаются неправильно. Включается один раз:<br><br>'+
+      '<b>Настройки → Универсальный доступ → Устный контент → Голоса → English</b><br><br>'+
+      'Выбери там любой британский голос и дождись загрузки. Потом вернись сюда.</div></div>';
+  }else{
+    voiceBlock =
+    '<div class="card pad"><div class="h3">Голос</div>'+
+      '<div class="note">Нажми на голос, чтобы послушать. Останется тот, который выбран последним.</div></div>'+
+    '<div class="opts" id="voices">'+
+      vs.map(function(v,i){
+        const on = (S.voiceURI ? v.voiceURI===S.voiceURI : (voice && v.voiceURI===voice.voiceURI));
+        return '<button class="opt'+(on?" good":"")+'" data-i="'+i+'">'+esc(v.name)+
+               ' <span style="opacity:.6;font-size:13px">'+esc(v.lang)+'</span></button>';
+      }).join("")+
+    '</div>';
+  }
+
   screenEl.innerHTML =
+  voiceBlock+
+  '<div class="card pad"><div class="h3">Скорость речи</div>'+
+    '<div class="note">Медленнее — легче расслышать, как пишется слово.</div></div>'+
+  '<div class="row" id="rates">'+
+    [["Медленно",0.7],["Обычно",0.85],["Быстро",1]].map(function(r){
+      const on = Math.abs((S.rate||0.85) - r[1]) < 0.01;
+      return '<button class="btn ghost'+(on?" on":"")+'" data-r="'+r[1]+'"'+(on?' style="border-color:var(--pen);color:var(--pen)"':"")+'>'+r[0]+'</button>';
+    }).join("")+
+  '</div>'+
   '<div class="card pad"><div class="h3">Резервная копия</div>'+
     '<div class="note">Здесь весь прогресс и добавленные слова одной строкой. Скопируй и сохрани себе в заметки — если телефон почистит память браузера, вставь этот текст обратно и всё вернётся.</div></div>'+
   '<textarea id="dump" spellcheck="false"></textarea>'+
@@ -652,6 +722,26 @@ function renderBackup(){
   const dump = document.getElementById("dump"), msg = document.getElementById("msg");
   dump.value = JSON.stringify(S);
   document.getElementById("back").onclick = renderHome;
+
+  const vlist = document.getElementById("voices");
+  if(vlist){
+    Array.prototype.slice.call(vlist.querySelectorAll(".opt")).forEach(function(b){
+      b.onclick = function(){
+        const v = vs[parseInt(b.getAttribute("data-i"), 10)];
+        S.voiceURI = v.voiceURI; saveState(); voice = v;
+        Array.prototype.slice.call(vlist.querySelectorAll(".opt")).forEach(function(x){ x.classList.remove("good"); });
+        b.classList.add("good");
+        say("The narrator draws the viewer's attention.");
+      };
+    });
+  }
+  Array.prototype.slice.call(document.querySelectorAll("#rates .btn")).forEach(function(b){
+    b.onclick = function(){
+      S.rate = parseFloat(b.getAttribute("data-r")); saveState();
+      renderSettings();
+      say("A pedestrian was injured in the crash.");
+    };
+  });
   document.getElementById("copy").onclick = function(){
     dump.select(); dump.setSelectionRange(0, 999999);
     let done = false;
