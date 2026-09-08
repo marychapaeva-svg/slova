@@ -1,0 +1,677 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F1F4FA" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#10141D" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Слова">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="format-detection" content="telephone=no">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
+<style>html{color-scheme:light dark}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Слова на завтра</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Literata:opsz,wght@7..72,600&family=Onest:wght@400;500;700&display=swap">
+<style>
+:root{
+  --paper:#F1F4FA; --card:#FFFFFF; --rule:#D6DEEC; --rule-soft:#E7ECF5;
+  --ink:#16233D; --ink-soft:#5D6A88; --ink-faint:#94A0BA;
+  --pen:#1F3FA8; --pen-tint:#E5EAF9; --pen-edge:#C3CFF0;
+  --red:#BE3328; --red-tint:#FBE7E4;
+  --green:#226B4E; --green-tint:#DFF0E7;
+  --shadow:0 1px 0 rgba(22,35,61,.05), 0 6px 20px -12px rgba(22,35,61,.35);
+  --r:14px;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#10141D; --card:#191F2C; --rule:#2A3346; --rule-soft:#222A3A;
+    --ink:#E7EBF4; --ink-soft:#98A4BE; --ink-faint:#69748F;
+    --pen:#87A3FF; --pen-tint:#1E2740; --pen-edge:#333F63;
+    --red:#EC7A6E; --red-tint:#33211F;
+    --green:#5CC49B; --green-tint:#182B24;
+    --shadow:0 1px 0 rgba(0,0,0,.2), 0 8px 24px -14px rgba(0,0,0,.8);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#10141D; --card:#191F2C; --rule:#2A3346; --rule-soft:#222A3A;
+  --ink:#E7EBF4; --ink-soft:#98A4BE; --ink-faint:#69748F;
+  --pen:#87A3FF; --pen-tint:#1E2740; --pen-edge:#333F63;
+  --red:#EC7A6E; --red-tint:#33211F;
+  --green:#5CC49B; --green-tint:#182B24;
+  --shadow:0 1px 0 rgba(0,0,0,.2), 0 8px 24px -14px rgba(0,0,0,.8);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:"Onest",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:16px; line-height:1.45;
+  background-image:linear-gradient(var(--rule-soft) 1px,transparent 1px),linear-gradient(90deg,var(--rule-soft) 1px,transparent 1px);
+  background-size:26px 26px; background-position:-1px -1px;
+  -webkit-text-size-adjust:100%;
+}
+.wrap{
+  max-width:470px;margin:0 auto;display:flex;flex-direction:column;gap:14px;
+  min-height:100vh; min-height:100dvh;
+  /* запуск с домашнего экрана iPhone: шапка иначе уезжает под чёлку */
+  padding:calc(14px + env(safe-area-inset-top,0px)) calc(16px + env(safe-area-inset-right,0px))
+          calc(40px + env(safe-area-inset-bottom,0px)) calc(16px + env(safe-area-inset-left,0px));
+}
+button{-webkit-tap-highlight-color:rgba(31,63,168,.12)}
+
+.top{display:flex;align-items:center;gap:10px;min-height:34px}
+.brand{font-family:"Literata",Georgia,serif;font-weight:600;font-size:19px;letter-spacing:-.01em;flex:1}
+.brand small{display:block;font-family:"Onest",sans-serif;font-weight:400;font-size:11.5px;color:var(--ink-faint);letter-spacing:.04em;text-transform:uppercase;margin-top:1px}
+.iconbtn{border:1px solid var(--rule);background:var(--card);color:var(--ink-soft);border-radius:9px;width:34px;height:34px;display:grid;place-items:center;cursor:pointer;font-size:15px;padding:0;flex:none;font-family:inherit}
+.iconbtn:hover{border-color:var(--pen-edge);color:var(--pen)}
+
+.card{background:var(--card);border:1px solid var(--rule);border-radius:var(--r);box-shadow:var(--shadow)}
+.pad{padding:16px}
+
+.plan{padding:18px 16px 16px;display:flex;flex-direction:column;gap:14px}
+.planhead{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.planhead h2{font-family:"Literata",Georgia,serif;font-size:17px;font-weight:600;margin:0}
+.planhead .when{font-size:12px;color:var(--ink-faint);font-variant-numeric:tabular-nums}
+.counts{display:flex;gap:8px}
+.count{flex:1;border:1px solid var(--rule);border-radius:11px;padding:10px 11px;background:var(--paper)}
+.count b{display:block;font-family:"Atkinson Hyperlegible",monospace;font-size:26px;line-height:1.05;font-weight:700;font-variant-numeric:tabular-nums}
+.count span{font-size:11.5px;color:var(--ink-soft);letter-spacing:.01em}
+.count.new b{color:var(--pen)} .count.rev b{color:var(--green)} .count.zero b{color:var(--ink-faint)}
+
+.btn{display:block;width:100%;border:none;border-radius:12px;padding:15px 18px;font-family:"Onest",sans-serif;font-size:16px;font-weight:700;cursor:pointer;text-align:center;background:var(--pen);color:#fff;letter-spacing:.01em}
+.btn:active{transform:translateY(1px)}
+.btn[disabled]{background:var(--rule);color:var(--ink-faint);cursor:default}
+.btn.ghost{background:var(--card);color:var(--ink);border:1px solid var(--rule);font-weight:500;font-size:14.5px;padding:12px 14px}
+.btn.ghost:hover{border-color:var(--pen-edge);color:var(--pen)}
+.row{display:flex;gap:8px}
+.row .btn{flex:1}
+:focus-visible{outline:2.5px solid var(--pen);outline-offset:2px}
+
+.streak{display:flex;flex-direction:column;gap:9px;padding:14px 16px}
+.streak .lbl{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--ink-soft);gap:10px}
+.streak .lbl b{font-family:"Atkinson Hyperlegible",monospace;font-size:14px;color:var(--ink);font-variant-numeric:tabular-nums;flex:none}
+.days{display:flex;gap:3px;align-items:flex-end;height:26px}
+.days i{flex:1;background:var(--rule-soft);border-radius:2px;min-height:4px;display:block}
+.days i.on{background:var(--pen)}
+.days i.today{outline:1.5px solid var(--pen);outline-offset:1px}
+
+.bar{height:5px;background:var(--rule-soft);border-radius:99px;overflow:hidden;flex:1}
+.bar i{display:block;height:100%;background:var(--pen);border-radius:99px;transition:width .25s ease}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}}
+.sessbar{display:flex;align-items:center;gap:10px}
+.sessbar .ct{font-family:"Atkinson Hyperlegible",monospace;font-size:12px;color:var(--ink-faint);font-variant-numeric:tabular-nums;flex:none}
+
+.stage{display:flex;flex-direction:column;gap:12px;flex:1}
+.phase{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);font-weight:500}
+.prompt{padding:22px 18px;text-align:center;display:flex;flex-direction:column;gap:6px;align-items:center}
+.word-en{font-family:"Atkinson Hyperlegible",monospace;font-size:34px;font-weight:700;line-height:1.15;letter-spacing:-.01em;word-break:break-word}
+.word-ru{font-family:"Literata",Georgia,serif;font-size:29px;font-weight:600;line-height:1.2;word-break:break-word}
+.tr{font-family:"Atkinson Hyperlegible",monospace;font-size:14px;color:var(--ink-soft)}
+.hint{font-size:13px;color:var(--ink-soft)}
+.ex{font-size:14px;line-height:1.5;color:var(--ink-soft);border-top:1px dashed var(--rule);padding-top:11px;margin-top:4px;width:100%;text-align:left}
+.ex b{font-family:"Atkinson Hyperlegible",monospace;font-weight:700;color:var(--ink)}
+.ex em{display:block;font-style:normal;color:var(--ink-faint);font-size:13px;margin-top:2px}
+.speak{border:1px solid var(--pen-edge);background:var(--pen-tint);color:var(--pen);border-radius:99px;padding:6px 14px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit}
+
+.opts{display:flex;flex-direction:column;gap:8px}
+.opt{text-align:left;background:var(--card);border:1px solid var(--rule);border-radius:12px;padding:14px 16px;font-family:"Literata",Georgia,serif;font-size:16.5px;color:var(--ink);cursor:pointer;box-shadow:var(--shadow)}
+.opt:hover:not(:disabled){border-color:var(--pen-edge)}
+.opt.good{background:var(--green-tint);border-color:var(--green);color:var(--green);font-weight:600}
+.opt.bad{background:var(--red-tint);border-color:var(--red);color:var(--red)}
+.opt:disabled{cursor:default}
+
+.slots{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;min-height:52px;align-items:center;padding:10px;background:var(--card);border:1px solid var(--rule);border-radius:12px}
+.slot{font-family:"Atkinson Hyperlegible",monospace;font-size:24px;font-weight:700;min-width:15px;border-bottom:2px solid var(--rule);padding:0 2px;line-height:1.3}
+.slot.f{border-bottom-color:var(--pen)}
+.tiles{display:flex;flex-wrap:wrap;gap:7px;justify-content:center}
+.tile{font-family:"Atkinson Hyperlegible",monospace;font-size:20px;font-weight:700;background:var(--card);border:1px solid var(--rule);border-radius:9px;min-width:42px;height:46px;cursor:pointer;color:var(--ink);box-shadow:var(--shadow)}
+.tile:hover:not(:disabled){border-color:var(--pen-edge);color:var(--pen)}
+.tile.used{opacity:.22;pointer-events:none}
+
+.answer{width:100%;font-family:"Atkinson Hyperlegible",monospace;font-size:26px;font-weight:700;text-align:center;padding:15px 12px;border:1.5px solid var(--rule);border-radius:12px;background:var(--card);color:var(--ink);letter-spacing:.02em}
+.answer:focus{border-color:var(--pen);outline:none}
+.verdict{padding:14px 16px;border-radius:12px;display:flex;flex-direction:column;gap:5px;align-items:center;text-align:center}
+.verdict.ok{background:var(--green-tint);border:1px solid var(--green)}
+.verdict.no{background:var(--red-tint);border:1px solid var(--red)}
+.verdict .lbl{font-size:12px;letter-spacing:.07em;text-transform:uppercase;font-weight:700}
+.verdict.ok .lbl{color:var(--green)} .verdict.no .lbl{color:var(--red)}
+.spell{font-family:"Atkinson Hyperlegible",monospace;font-size:25px;font-weight:700;letter-spacing:.04em;word-break:break-all}
+.spell .ok{color:var(--green)} .spell .bad{color:var(--red);text-decoration:line-through} .spell .miss{color:var(--red);opacity:.45}
+.right{font-family:"Atkinson Hyperlegible",monospace;font-size:25px;font-weight:700;letter-spacing:.04em;color:var(--ink)}
+
+.done{padding:24px 18px;text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center}
+.done h2{font-family:"Literata",Georgia,serif;font-size:23px;margin:0;font-weight:600}
+.done .big{font-family:"Atkinson Hyperlegible",monospace;font-size:52px;font-weight:700;color:var(--pen);line-height:1;font-variant-numeric:tabular-nums}
+
+.unit{font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-faint);font-weight:500;margin:6px 0 2px}
+.wlist{display:flex;flex-direction:column}
+.wrow{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--rule-soft)}
+.wrow:last-child{border-bottom:none}
+.wrow .en{font-family:"Atkinson Hyperlegible",monospace;font-weight:700;font-size:15px}
+.wrow .ru{font-size:13.5px;color:var(--ink-soft);flex:1;min-width:0}
+.boxes{display:flex;gap:2.5px;flex:none}
+.boxes i{width:6px;height:6px;border-radius:99px;background:var(--rule)}
+.boxes i.on{background:var(--pen)}
+.boxes i.fin{background:var(--green)}
+.del{border:none;background:none;color:var(--ink-faint);cursor:pointer;font-size:16px;padding:0 2px;line-height:1;font-family:inherit}
+.del:hover{color:var(--red)}
+
+/* 16px — ниже этого Safari на айфоне сам зумит страницу при фокусе */
+textarea{width:100%;min-height:190px;font-family:"Onest",sans-serif;font-size:16px;line-height:1.5;padding:12px;border:1px solid var(--rule);border-radius:12px;background:var(--card);color:var(--ink);resize:vertical}
+textarea:focus{border-color:var(--pen);outline:none}
+input.txt{width:100%;font-family:inherit;font-size:16px;padding:11px 12px;border:1px solid var(--rule);border-radius:10px;background:var(--card);color:var(--ink)}
+input.txt:focus{border-color:var(--pen);outline:none}
+.note{font-size:13px;color:var(--ink-soft);line-height:1.5}
+.note code{font-family:"Atkinson Hyperlegible",monospace;background:var(--pen-tint);color:var(--pen);padding:1px 5px;border-radius:4px;font-size:12.5px}
+.h3{font-family:"Literata",Georgia,serif;font-size:16px;font-weight:600;margin:0 0 8px}
+.textbtn{background:none;border:none;color:var(--ink-faint);font-family:inherit;font-size:13px;cursor:pointer;padding:6px;text-decoration:underline;text-underline-offset:3px;align-self:center}
+.textbtn:hover{color:var(--pen)}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand">Слова на завтра<small>английский · слова из учебника</small></div>
+    <button class="iconbtn" id="navList" title="Все слова" aria-label="Все слова">☰</button>
+    <button class="iconbtn" id="navAdd" title="Добавить слова" aria-label="Добавить слова">+</button>
+  </div>
+  <main id="screen"></main>
+</div>
+
+<script>
+"use strict";
+
+/* ---------- словарь: слова из учебника ---------- */
+const BUILTIN = [
+ {en:"popular",          tr:"ˈpɒpjʊlə",            ru:"популярный",                 ex:"Reality shows are very popular with teenagers.", exru:"Реалити-шоу очень популярны у подростков.", unit:"1a"},
+ {en:"real-life",        tr:"ˌriːəl ˈlaɪf",        ru:"действительный, реальный",   ex:"The film is based on a real-life story.",        exru:"Фильм основан на реальной истории.", unit:"1a"},
+ {en:"documentary",      tr:"ˌdɒkjʊˈmentəri",      ru:"документальный фильм",       ex:"We watched a documentary about sharks.",         exru:"Мы посмотрели документальный фильм об акулах.", unit:"1a"},
+ {en:"reality show",     tr:"riˈæləti ʃəʊ",        ru:"реалити-шоу",                ex:"My sister never misses a reality show.",         exru:"Моя сестра не пропускает ни одного реалити-шоу.", unit:"1a"},
+ {en:"feature",          tr:"ˈfiːtʃə",             ru:"показывать",                 ex:"The programme features real police officers.",   exru:"В программе показывают настоящих полицейских.", unit:"1a"},
+ {en:"video footage",    tr:"ˈvɪdiəʊ ˈfʊtɪdʒ",     ru:"видеоматериалы",             ex:"The police showed video footage of the accident.", exru:"Полиция показала видеоматериалы аварии.", unit:"1a"},
+ {en:"police car",       tr:"pəˈliːs kɑː",         ru:"полицейская машина",         ex:"A police car stopped in front of us.",           exru:"Полицейская машина остановилась перед нами.", unit:"1a"},
+ {en:"handheld camera",  tr:"ˈhændheld ˈkæmərə",   ru:"портативная камера",         ex:"The scene was filmed with a handheld camera.",   exru:"Сцену снимали портативной камерой.", unit:"1a"},
+ {en:"focus on",         tr:"ˈfəʊkəs ɒn",          ru:"сосредоточиться на",         ex:"The show focuses on young drivers.",             exru:"Передача сосредоточена на молодых водителях.", unit:"1a"},
+ {en:"road crime",       tr:"rəʊd kraɪm",          ru:"дорожное преступление",      ex:"This programme is about road crime.",            exru:"Эта передача о дорожных преступлениях.", unit:"1a"},
+ {en:"catchy title",     tr:"ˈkætʃi ˈtaɪtl",       ru:"запоминающееся название",    ex:"A catchy title makes people watch.",             exru:"Запоминающееся название заставляет людей смотреть.", unit:"1a"},
+ {en:"narrator",         tr:"nəˈreɪtə",            ru:"рассказчик",                 ex:"The narrator explains what is happening.",       exru:"Рассказчик объясняет, что происходит.", unit:"1a"},
+ {en:"draw",             tr:"drɔː",                ru:"заинтересовать",             ex:"The first scene draws your attention.",          exru:"Первая сцена привлекает твоё внимание.", unit:"1a"},
+ {en:"viewer",           tr:"ˈvjuːə",              ru:"зритель",                    ex:"Millions of viewers watch this show.",           exru:"Миллионы зрителей смотрят это шоу.", unit:"1a"},
+ {en:"voice over",       tr:"ˈvɔɪs ˈəʊvə",         ru:"голос за кадром",            ex:"A deep voice over tells the story.",             exru:"Низкий голос за кадром рассказывает историю.", unit:"1a"},
+ {en:"suspect",          tr:"ˈsʌspekt",            ru:"подозреваемый",              ex:"The police arrested the suspect.",               exru:"Полиция задержала подозреваемого.", unit:"1a"},
+ {en:"pedestrian",       tr:"pəˈdestriən",         ru:"пешеход",                    ex:"The pedestrian crossed the road safely.",        exru:"Пешеход благополучно перешёл дорогу.", unit:"1a"},
+ {en:"injured",          tr:"ˈɪndʒəd",             ru:"пострадавший",               ex:"Two people were injured in the crash.",          exru:"Два человека пострадали в аварии.", unit:"1a"},
+ {en:"U-turn",           tr:"ˈjuː tɜːn",           ru:"разворот",                   ex:"He made a dangerous U-turn.",                    exru:"Он сделал опасный разворот.", unit:"1a"},
+ {en:"oncoming traffic", tr:"ˈɒnkʌmɪŋ ˈtræfɪk",    ru:"встречное движение",         ex:"The car drove into oncoming traffic.",           exru:"Машина выехала на встречное движение.", unit:"1a"},
+ {en:"shocked",          tr:"ʃɒkt",                ru:"шокирован",                  ex:"I was shocked by the video.",                    exru:"Я был шокирован этим видео.", unit:"1a"},
+ {en:"speed",            tr:"spiːd",               ru:"разгоняться",                ex:"Don't speed near a school.",                     exru:"Не разгоняйся рядом со школой.", unit:"1a"},
+ {en:"cut sb off",       tr:"kʌt ˈsʌmbədi ɒf",     ru:"перехватить кого-то",        ex:"A red van cut him off on the bridge.",           exru:"Красный фургон перехватил его на мосту.", unit:"1a"},
+ {en:"channel hop",      tr:"ˈtʃænl hɒp",          ru:"щёлкать каналами",           ex:"He channel hops all evening.",                   exru:"Он весь вечер щёлкает каналами.", unit:"1a"}
+];
+
+/* ---------- хранилище: прогресс живёт в браузере телефона ---------- */
+const KEY = "slova.v1";
+const INT = [1,1,2,4,8,16,32,60,120];   // дней до следующего показа по номеру коробки
+const NEW_LIMIT = 12;                   // максимум новых слов за один вечер
+
+let S = loadState();
+function loadState(){
+  try{
+    const r = JSON.parse(localStorage.getItem(KEY));
+    if(r && r.progress) return Object.assign({progress:{}, custom:[], history:{}}, r);
+  }catch(e){}
+  return {progress:{}, custom:[], history:{}};
+}
+function saveState(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+
+function iso(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function today(){ return iso(new Date()); }
+function plusDays(n){ const d=new Date(); d.setDate(d.getDate()+n); return iso(d); }
+function key(w){ return w.en.toLowerCase().trim(); }
+function P(w){ return S.progress[key(w)] || {box:0, due:null, right:0, wrong:0}; }
+function setP(w,p){ S.progress[key(w)] = p; }
+
+function allWords(){
+  const m = new Map();
+  BUILTIN.concat(S.custom||[]).forEach(function(w){ if(w && w.en && w.ru) m.set(key(w), w); });
+  return Array.from(m.values());
+}
+function shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const t=a[i]; a[i]=a[j]; a[j]=t; } return a; }
+function norm(s){ return String(s).toLowerCase().replace(/\s+/g," ").trim(); }
+/* фразу из двух слов собирать из букв бессмысленно — только короткие одиночные слова */
+function buildable(w){ return !/\s/.test(w.en) && w.en.length<=12; }
+function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+function plural(n,a,b,c){ const m=Math.abs(n)%100, m1=m%10; if(m>10&&m<20) return c; if(m1>1&&m1<5) return b; if(m1===1) return a; return c; }
+
+function plan(){
+  const t = today(), all = allWords();
+  const fresh = all.filter(function(w){ return P(w).box===0; }).slice(0, NEW_LIMIT);
+  const due   = all.filter(function(w){ const p=P(w); return p.box>0 && p.due && p.due<=t; });
+  return {fresh:fresh, due:due, all:all};
+}
+
+/* ---------- озвучка ---------- */
+let voice = null;
+function pickVoice(){
+  if(!("speechSynthesis" in window)) return;
+  const vs = speechSynthesis.getVoices();
+  voice = vs.filter(function(v){ return /^en-GB/i.test(v.lang); })[0] ||
+          vs.filter(function(v){ return /^en/i.test(v.lang); })[0] || null;
+}
+if("speechSynthesis" in window){ pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+function say(text){
+  if(!("speechSynthesis" in window)) return;
+  try{
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "en-GB"; u.rate = 0.85; if(voice) u.voice = voice;
+    speechSynthesis.speak(u);
+  }catch(e){}
+}
+
+/* ---------- экраны ---------- */
+const screenEl = document.getElementById("screen");
+let session = null;
+document.getElementById("navList").onclick = function(){ session=null; renderList(); };
+document.getElementById("navAdd").onclick  = function(){ session=null; renderAdd(); };
+
+function renderHome(){
+  const pl = plan(), fresh = pl.fresh, due = pl.due, all = pl.all;
+  const total = fresh.length + due.length;
+  const learned = all.filter(function(w){ return P(w).box>=4; }).length;
+  const started = all.filter(function(w){ return P(w).box>0; }).length;
+
+  const hist = [];
+  for(let i=13;i>=0;i--){ const d = plusDays(-i); hist.push({d:d, n:(S.history[d]||0)}); }
+  let maxN = 6; hist.forEach(function(h){ if(h.n>maxN) maxN=h.n; });
+  const bars = hist.map(function(h){
+    const cls = (h.n>0?"on":"") + (h.d===today()?" today":"");
+    const hh  = h.n>0 ? Math.round(4 + (h.n/maxN)*22) : 4;
+    return '<i class="'+cls+'" style="height:'+hh+'px" title="'+h.d+': '+h.n+'"></i>';
+  }).join("");
+
+  let streak = 0;
+  for(let i=0;i<400;i++){ const d = plusDays(-i); if(S.history[d]>0) streak++; else if(i>0) break; }
+
+  screenEl.innerHTML =
+  '<div class="card plan">'+
+    '<div class="planhead"><h2>Задание на сегодня</h2>'+
+      '<span class="when">'+new Date().toLocaleDateString("ru-RU",{day:"numeric",month:"long"})+'</span></div>'+
+    '<div class="counts">'+
+      '<div class="count '+(fresh.length?"new":"zero")+'"><b>'+fresh.length+'</b><span>новых слов</span></div>'+
+      '<div class="count '+(due.length?"rev":"zero")+'"><b>'+due.length+'</b><span>на повтор</span></div>'+
+      '<div class="count '+(learned?"rev":"zero")+'"><b>'+learned+'</b><span>в долгой памяти</span></div>'+
+    '</div>'+
+    (total ? '<button class="btn" id="go">Заниматься · '+estimate(fresh.length,due.length)+'</button>'
+           : '<button class="btn" disabled>На сегодня всё сделано</button>')+
+  '</div>'+
+  '<div class="card streak">'+
+    '<div class="lbl"><span>'+(streak? "Занимался "+streak+" "+plural(streak,"день","дня","дней")+" подряд" : "Две недели занятий")+'</span>'+
+      '<b>'+started+"/"+all.length+'</b></div>'+
+    '<div class="days">'+bars+'</div>'+
+  '</div>'+
+  '<div class="row">'+
+    '<button class="btn ghost" id="drill">Перед диктантом</button>'+
+    '<button class="btn ghost" id="list">Все слова · '+all.length+'</button>'+
+  '</div>'+
+  (total===0 && all.length ? '<div class="note" style="text-align:center">Следующее повторение — '+nextDate()+'. Можно прогнать слова перед диктантом.</div>' : "")+
+  '<button class="textbtn" id="backup">Резервная копия прогресса</button>';
+
+  const g = document.getElementById("go"); if(g) g.onclick = function(){ startSession("daily"); };
+  document.getElementById("drill").onclick  = renderDrillPick;
+  document.getElementById("list").onclick   = renderList;
+  document.getElementById("backup").onclick = renderBackup;
+}
+function estimate(a,b){ return "≈"+Math.max(3, Math.round((a*45 + b*12)/60))+" мин"; }
+function nextDate(){
+  const ds = allWords().map(function(w){ return P(w).due; }).filter(Boolean).sort();
+  return ds.length ? new Date(ds[0]+"T12:00:00").toLocaleDateString("ru-RU",{day:"numeric",month:"long"}) : "—";
+}
+
+/* ---------- сессия ---------- */
+function startSession(mode, subset){
+  const pl = plan();
+  let steps = [];
+  if(mode==="daily"){
+    pl.fresh.forEach(function(w){ steps.push({w:w, t:"intro"}); });
+    shuffle(pl.fresh).forEach(function(w){ steps.push({w:w, t:"choice"}); });
+    shuffle(pl.fresh.concat(pl.due.filter(function(w){ return P(w).box<=1; })))
+      .filter(buildable).forEach(function(w){ steps.push({w:w, t:"build"}); });
+    shuffle(pl.fresh.concat(pl.due)).forEach(function(w){ steps.push({w:w, t:"write"}); });
+  }else{
+    shuffle(subset).forEach(function(w){ steps.push({w:w, t:"write"}); });
+  }
+  if(!steps.length){ renderHome(); return; }
+  session = {mode:mode, steps:steps, i:0, done:0, wrong:0, total:steps.length, mistakes:[]};
+  renderStep();
+}
+function advance(){
+  session.i++; session.done++;
+  if(session.i >= session.steps.length) return renderFinish();
+  renderStep();
+}
+function requeue(w){ session.steps.push({w:w, t:"write", retry:true}); session.total = session.steps.length; }
+
+function sessionHead(label){
+  const pct = Math.round((session.done/Math.max(1,session.total))*100);
+  return '<div class="sessbar"><button class="iconbtn" id="quit" aria-label="Выйти">✕</button>'+
+         '<div class="bar"><i style="width:'+pct+'%"></i></div>'+
+         '<span class="ct">'+session.done+"/"+session.total+'</span></div>'+
+         '<div class="phase">'+label+'</div>';
+}
+function wireQuit(){
+  const q = document.getElementById("quit");
+  if(q) q.onclick = function(){ session=null; renderHome(); };
+}
+function renderStep(){
+  const st = session.steps[session.i];
+  if(st.t==="intro")  return stepIntro(st.w);
+  if(st.t==="choice") return stepChoice(st.w);
+  if(st.t==="build")  return stepBuild(st.w);
+  return stepWrite(st.w, st.retry);
+}
+
+/* фаза 1 — знакомство */
+function stepIntro(w){
+  screenEl.innerHTML = sessionHead("Знакомство")+
+  '<div class="stage"><div class="card prompt">'+
+    '<div class="word-en">'+esc(w.en)+'</div>'+
+    (w.tr ? '<div class="tr">['+esc(w.tr)+']</div>' : "")+
+    '<button class="speak" id="sp">🔊 Послушать</button>'+
+    '<div class="word-ru" style="margin-top:6px">'+esc(w.ru)+'</div>'+
+    (w.ex ? '<div class="ex"><b>'+esc(w.ex)+'</b>'+(w.exru?'<em>'+esc(w.exru)+'</em>':"")+'</div>' : "")+
+  '</div><button class="btn" id="next">Понятно</button></div>';
+  wireQuit();
+  document.getElementById("sp").onclick = function(){ say(w.en); };
+  document.getElementById("next").onclick = advance;
+  say(w.en);
+}
+
+/* фаза 2 — узнавание EN → RU */
+function stepChoice(w){
+  const pool = shuffle(allWords().filter(function(x){ return key(x)!==key(w); })).slice(0,3);
+  const opts = shuffle(pool.concat([w]));
+  screenEl.innerHTML = sessionHead("Что это значит?")+
+  '<div class="stage"><div class="card prompt">'+
+    '<div class="word-en">'+esc(w.en)+'</div><button class="speak" id="sp">🔊</button>'+
+  '</div><div class="opts">'+
+    opts.map(function(o,i){ return '<button class="opt" data-i="'+i+'">'+esc(o.ru)+'</button>'; }).join("")+
+  '</div></div>';
+  wireQuit();
+  document.getElementById("sp").onclick = function(){ say(w.en); };
+  const btns = Array.prototype.slice.call(document.querySelectorAll(".opt"));
+  btns.forEach(function(b,i){
+    b.onclick = function(){
+      const ok = key(opts[i])===key(w);
+      btns.forEach(function(x,j){ x.disabled=true; if(key(opts[j])===key(w)) x.classList.add("good"); });
+      if(!ok) b.classList.add("bad");
+      say(w.en);
+      setTimeout(advance, ok?550:1500);
+    };
+  });
+}
+
+/* фаза 3 — сборка слова из букв */
+function stepBuild(w){
+  const letters = w.en.split("");
+  const tiles = shuffle(letters.map(function(ch,i){ return {ch:ch, i:i}; }));
+  let picked = [];
+  screenEl.innerHTML = sessionHead("Собери слово")+
+  '<div class="stage"><div class="card prompt">'+
+    '<div class="word-ru">'+esc(w.ru)+'</div>'+
+    (w.tr ? '<div class="tr">['+esc(w.tr)+']</div>' : "")+
+  '</div>'+
+  '<div class="slots" id="slots"></div>'+
+  '<div class="tiles">'+tiles.map(function(t,i){ return '<button class="tile" data-i="'+i+'">'+esc(t.ch===" "?"␣":t.ch)+'</button>'; }).join("")+'</div>'+
+  '<button class="btn ghost" id="undo">← Стереть букву</button></div>';
+  wireQuit();
+
+  const slotsEl = document.getElementById("slots");
+  const tileEls = Array.prototype.slice.call(document.querySelectorAll(".tile"));
+  function draw(){
+    slotsEl.innerHTML = letters.map(function(ch,i){
+      const v = picked[i];
+      return '<span class="slot'+(i===picked.length?" f":"")+'">'+(v!==undefined?esc(v.ch===" "?"␣":v.ch):"&nbsp;")+'</span>';
+    }).join("");
+  }
+  function check(){
+    if(picked.length!==letters.length) return;
+    const got = picked.map(function(p){ return p.ch; }).join("");
+    tileEls.forEach(function(t){ t.disabled=true; });
+    if(got.toLowerCase()===w.en.toLowerCase()){ say(w.en); setTimeout(advance, 700); }
+    else{
+      slotsEl.innerHTML = '<span class="spell">'+diff(got, w.en)+'</span>';
+      setTimeout(function(){
+        picked = [];
+        tileEls.forEach(function(t){ t.disabled=false; t.classList.remove("used"); });
+        draw();
+      }, 1600);
+    }
+  }
+  tileEls.forEach(function(el,i){
+    el.onclick = function(){ el.classList.add("used"); picked.push(tiles[i]); draw(); check(); };
+  });
+  document.getElementById("undo").onclick = function(){
+    const last = picked.pop(); if(!last) return;
+    for(let k=0;k<tiles.length;k++){ if(tiles[k].i===last.i){ tileEls[k].classList.remove("used"); break; } }
+    draw();
+  };
+  draw();
+}
+
+/* фаза 4 — диктант RU → EN */
+function diff(got, want){
+  let out = "";
+  const n = Math.max(got.length, want.length);
+  for(let i=0;i<n;i++){
+    const g = got[i], v = want[i];
+    if(g===undefined) out += '<span class="miss">'+esc(v)+'</span>';
+    else if(v!==undefined && g.toLowerCase()===v.toLowerCase()) out += '<span class="ok">'+esc(g)+'</span>';
+    else out += '<span class="bad">'+esc(g)+'</span>';
+  }
+  return out;
+}
+
+function stepWrite(w, isRetry){
+  screenEl.innerHTML = sessionHead(isRetry ? "Ещё раз — теперь без ошибок" : "Напиши по-английски")+
+  '<div class="stage"><div class="card prompt">'+
+    '<div class="word-ru">'+esc(w.ru)+'</div>'+
+    (w.tr ? '<div class="tr">['+esc(w.tr)+']</div>' : "")+
+  '</div>'+
+  '<input class="answer" id="ans" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">'+
+  '<div id="act"><button class="btn" id="ok">Проверить</button></div></div>';
+  wireQuit();
+
+  const inp = document.getElementById("ans");
+  inp.focus();
+  document.getElementById("ok").onclick = check;
+  inp.addEventListener("keydown", function(e){ if(e.key==="Enter"){ e.preventDefault(); check(); } });
+
+  function check(){
+    const got = inp.value.replace(/\s+/g," ").trim();
+    if(!got){ inp.focus(); return; }
+    const ok = norm(got) === norm(w.en);
+    if(session.mode==="daily"){
+      const p = P(w);
+      if(ok){ p.right++; p.box = Math.min(p.box+1, INT.length-1); p.due = plusDays(INT[p.box]); }
+      else  { p.wrong++; p.box = 1; p.due = plusDays(1); }
+      setP(w,p); saveState();
+    }
+    if(!ok){
+      session.wrong++;
+      if(session.mistakes.indexOf(w)<0) session.mistakes.push(w);
+      if(!isRetry) requeue(w);
+    }
+    say(w.en);
+    inp.disabled = true;
+    document.getElementById("act").innerHTML =
+      '<div class="verdict '+(ok?"ok":"no")+'">'+
+        '<span class="lbl">'+(ok?"Верно":"Ошибка")+'</span>'+
+        '<span class="spell">'+diff(got, w.en)+'</span>'+
+        (ok ? "" : '<span class="right">'+esc(w.en)+'</span>')+
+        (ok && w.ex ? '<span class="hint">'+esc(w.ex)+'</span>' : "")+
+      '</div>'+
+      '<button class="btn" id="nx" style="margin-top:10px">'+(ok?"Дальше":"Понял, дальше")+'</button>';
+    const nb = document.getElementById("nx");
+    nb.onclick = advance;
+    nb.focus();
+  }
+}
+
+/* ---------- итог вечера ---------- */
+function renderFinish(){
+  const t = today();
+  const passed = session.steps.filter(function(s){ return s.t==="write" && !s.retry; }).length;
+  if(session.mode==="daily"){ S.history[t] = (S.history[t]||0) + passed; saveState(); }
+  const nextIn = allWords().map(function(w){ return P(w).due; }).filter(Boolean).sort()[0];
+  const score = Math.round(((session.total - session.wrong)/Math.max(1,session.total))*100);
+
+  screenEl.innerHTML =
+  '<div class="card done">'+
+    '<div class="big">'+score+'%</div>'+
+    '<h2>'+(session.wrong===0 ? "Ни одной ошибки" : "Готово")+'</h2>'+
+    '<div class="note">'+passed+' '+plural(passed,"слово","слова","слов")+' пройдено'+
+      (nextIn ? '. Следующее повторение — '+new Date(nextIn+"T12:00:00").toLocaleDateString("ru-RU",{day:"numeric",month:"long"}) : "")+'</div>'+
+  '</div>'+
+  (session.mistakes.length
+    ? '<div class="card pad"><div class="h3">Сложные слова — глянуть утром</div><div class="wlist">'+
+      session.mistakes.map(function(w){ return '<div class="wrow"><span class="en">'+esc(w.en)+'</span><span class="ru">'+esc(w.ru)+'</span></div>'; }).join("")+
+      '</div></div>'
+    : "")+
+  '<button class="btn" id="home">На главную</button>';
+  document.getElementById("home").onclick = function(){ session=null; renderHome(); };
+}
+
+/* ---------- репетиция перед диктантом ---------- */
+function byUnit(){
+  const units = {};
+  allWords().forEach(function(w){ const u = w.unit || "Без раздела"; (units[u] = units[u] || []).push(w); });
+  return units;
+}
+function renderDrillPick(){
+  const units = byUnit(), names = Object.keys(units);
+  screenEl.innerHTML =
+  '<div class="card pad"><div class="h3">Перед диктантом</div>'+
+    '<div class="note">Прогон слов раздела только на письмо. Расписание повторений не меняет — это репетиция, ошибаться здесь можно сколько угодно.</div></div>'+
+  '<div class="opts">'+
+    names.map(function(n){ return '<button class="opt" data-u="'+esc(n)+'">'+esc(n)+' · '+units[n].length+'</button>'; }).join("")+
+    '<button class="opt" data-u="*">Все слова · '+allWords().length+'</button>'+
+  '</div>'+
+  '<button class="btn ghost" id="back">Назад</button>';
+  document.getElementById("back").onclick = renderHome;
+  Array.prototype.slice.call(document.querySelectorAll(".opt")).forEach(function(b){
+    b.onclick = function(){
+      const u = b.getAttribute("data-u");
+      startSession("drill", u==="*" ? allWords() : units[u]);
+    };
+  });
+}
+
+/* ---------- список слов ---------- */
+function renderList(){
+  const units = byUnit();
+  let html = "";
+  Object.keys(units).forEach(function(u){
+    html += '<div class="unit">'+esc(u)+'</div><div class="card wlist">'+
+      units[u].map(function(w){
+        const p = P(w);
+        let dots = "";
+        for(let i=0;i<5;i++) dots += '<i class="'+(p.box>i ? (p.box>=4?"fin":"on") : "")+'"></i>';
+        const custom = (S.custom||[]).some(function(c){ return key(c)===key(w); });
+        return '<div class="wrow"><span class="en">'+esc(w.en)+'</span><span class="ru">'+esc(w.ru)+'</span>'+
+               '<span class="boxes" title="пройдено повторений: '+p.box+'">'+dots+'</span>'+
+               (custom ? '<button class="del" data-k="'+esc(key(w))+'" title="Удалить">×</button>' : "")+'</div>';
+      }).join("")+'</div>';
+  });
+  screenEl.innerHTML = html + '<button class="btn ghost" id="back">На главную</button>';
+  document.getElementById("back").onclick = renderHome;
+  Array.prototype.slice.call(document.querySelectorAll(".del")).forEach(function(b){
+    b.onclick = function(){
+      const k = b.getAttribute("data-k");
+      S.custom = (S.custom||[]).filter(function(c){ return key(c)!==k; });
+      saveState(); renderList();
+    };
+  });
+}
+
+/* ---------- добавить слова руками ---------- */
+function renderAdd(){
+  screenEl.innerHTML =
+  '<div class="card pad"><div class="h3">Добавить слова</div>'+
+    '<div class="note">Вставь сюда список, который прислала мама, и нажми «Добавить». Одно слово в строке, разделитель — тире:<br><code>word [транскрипция] — перевод — пример — перевод примера</code><br>Обязательны только слово и перевод, остальное можно не писать.</div></div>'+
+  '<input class="txt" id="unit" placeholder="Название раздела, например «Unit 3»">'+
+  '<textarea id="raw" placeholder="brave — смелый&#10;treasure — сокровище&#10;journey — поездка"></textarea>'+
+  '<div class="note" id="cnt"></div>'+
+  '<button class="btn" id="save">Добавить</button>'+
+  '<button class="btn ghost" id="back">Назад</button>';
+  const raw = document.getElementById("raw"), cnt = document.getElementById("cnt");
+  raw.addEventListener("input", function(){
+    const n = parse(raw.value).length;
+    cnt.textContent = n ? "Распознано слов: "+n : "";
+  });
+  document.getElementById("back").onclick = renderHome;
+  document.getElementById("save").onclick = function(){
+    const unit = (document.getElementById("unit").value||"").trim() || ("Добавлено "+new Date().toLocaleDateString("ru-RU"));
+    const list = parse(raw.value).map(function(o){ o.unit = unit; return o; });
+    if(!list.length){ cnt.textContent = "Ничего не распознал — проверь разделитель между словом и переводом."; return; }
+    S.custom = (S.custom||[]).concat(list);
+    saveState(); renderList();
+  };
+}
+/* Формат строки:  word [транскрипция] — перевод — пример — перевод примера
+   Обязательны только первые две части, остальное по желанию. */
+function parse(text){
+  return String(text||"").split(/\r?\n/).map(function(l){ return l.trim(); }).filter(Boolean).map(function(l){
+    const parts = l.split(/\s+[—–|]\s+|\s+-\s+|\t+|\s{3,}/).map(function(s){ return s.trim(); }).filter(Boolean);
+    if(parts.length<2) return null;
+    let en = parts[0].replace(/^[0-9]+[.)]\s*/, "");
+    let tr = "";
+    const m = en.match(/^(.*?)\s*[\[\/]([^\]\/]+)[\]\/]\s*$/);
+    if(m){ en = m[1].trim(); tr = m[2].trim(); }
+    if(!/[a-zA-Z]/.test(en)) return null;
+    return {en:en, ru:parts[1], tr:tr, ex:parts[2]||"", exru:parts[3]||""};
+  }).filter(Boolean);
+}
+
+/* ---------- резервная копия прогресса ---------- */
+function renderBackup(){
+  screenEl.innerHTML =
+  '<div class="card pad"><div class="h3">Резервная копия</div>'+
+    '<div class="note">Здесь весь прогресс и добавленные слова одной строкой. Скопируй и сохрани себе в заметки — если телефон почистит память браузера, вставь этот текст обратно и всё вернётся.</div></div>'+
+  '<textarea id="dump" spellcheck="false"></textarea>'+
+  '<div class="row"><button class="btn ghost" id="copy">Скопировать</button>'+
+    '<button class="btn ghost" id="restore">Восстановить из текста</button></div>'+
+  '<div class="note" id="msg"></div>'+
+  '<button class="btn ghost" id="back">Назад</button>';
+  const dump = document.getElementById("dump"), msg = document.getElementById("msg");
+  dump.value = JSON.stringify(S);
+  document.getElementById("back").onclick = renderHome;
+  document.getElementById("copy").onclick = function(){
+    dump.select(); dump.setSelectionRange(0, 999999);
+    let done = false;
+    try{ done = document.execCommand("copy"); }catch(e){}
+    if(!done && navigator.clipboard){ navigator.clipboard.writeText(dump.value); done = true; }
+    msg.textContent = done ? "Скопировано." : "Не вышло скопировать — выдели текст вручную.";
+  };
+  document.getElementById("restore").onclick = function(){
+    try{
+      const r = JSON.parse(dump.value);
+      if(!r || !r.progress) throw new Error("bad");
+      S = Object.assign({progress:{}, custom:[], history:{}}, r);
+      saveState();
+      msg.textContent = "Готово, прогресс восстановлен.";
+      setTimeout(renderHome, 900);
+    }catch(e){ msg.textContent = "Это не похоже на резервную копию — проверь, что скопирован весь текст целиком."; }
+  };
+}
+
+renderHome();
+</script>
+</body>
+</html>
