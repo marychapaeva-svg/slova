@@ -138,8 +138,9 @@ button{-webkit-tap-highlight-color:rgba(31,63,168,.12)}
 .verdict{padding:14px 16px;border-radius:12px;display:flex;flex-direction:column;gap:5px;align-items:center;text-align:center}
 .verdict.ok{background:var(--green-tint);border:1px solid var(--green)}
 .verdict.no{background:var(--red-tint);border:1px solid var(--red)}
+.verdict.tell{background:var(--pen-tint);border:1px solid var(--pen-edge)}
 .verdict .lbl{font-size:12px;letter-spacing:.07em;text-transform:uppercase;font-weight:700}
-.verdict.ok .lbl{color:var(--green)} .verdict.no .lbl{color:var(--red)}
+.verdict.ok .lbl{color:var(--green)} .verdict.no .lbl{color:var(--red)} .verdict.tell .lbl{color:var(--pen)}
 .spell{font-family:"Atkinson Hyperlegible",monospace;font-size:25px;font-weight:700;letter-spacing:.04em;word-break:break-all}
 .spell .ok{color:var(--green)} .spell .bad{color:var(--red);text-decoration:line-through} .spell .miss{color:var(--red);opacity:.45}
 .right{font-family:"Atkinson Hyperlegible",monospace;font-size:25px;font-weight:700;letter-spacing:.04em;color:var(--ink)}
@@ -171,6 +172,7 @@ input.txt:focus{border-color:var(--pen);outline:none}
 .h3{font-family:"Literata",Georgia,serif;font-size:16px;font-weight:600;margin:0 0 8px}
 .textbtn{background:none;border:none;color:var(--ink-faint);font-family:inherit;font-size:13px;cursor:pointer;padding:6px;text-decoration:underline;text-underline-offset:3px;align-self:center}
 .textbtn:hover{color:var(--pen)}
+.links{display:flex;justify-content:center;gap:18px;flex-wrap:wrap}
 </style>
 
 </head>
@@ -246,8 +248,26 @@ function shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.fl
 function norm(s){ return String(s).toLowerCase().replace(/\s+/g," ").trim(); }
 /* фразу из двух слов собирать из букв бессмысленно — только короткие одиночные слова */
 function buildable(w){ return !/\s/.test(w.en) && w.en.length<=12; }
+/* «трудное» — забывал дважды или хоть раз не смог вспомнить, и ещё не закрепилось */
+function troubles(w){ const p=P(w); return (p.wrong||0) + (p.unknown||0)*2; }
+function hardWord(w){ return troubles(w) >= 2 && P(w).box < 3; }
 function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
 function plural(n,a,b,c){ const m=Math.abs(n)%100, m1=m%10; if(m>10&&m<20) return c; if(m1>1&&m1<5) return b; if(m1===1) return a; return c; }
+
+/* Дневная запись: {n слов пройдено, ok верных, bad ошибок, sec секунд}.
+   В первых версиях здесь лежало просто число — поддерживаем и его. */
+function dayRec(d){
+  let r = S.history[d];
+  if(typeof r === "number") r = {n:r};
+  return r ? {n:r.n||0, ok:r.ok||0, bad:r.bad||0, skip:r.skip||0, sec:r.sec||0}
+           : {n:0, ok:0, bad:0, skip:0, sec:0};
+}
+function setDay(d, r){ S.history[d] = r; saveState(); }
+function fmtMin(sec){
+  const m = Math.round(sec/60);
+  if(m < 1) return sec>0 ? "меньше минуты" : "—";
+  return m+" "+plural(m,"минута","минуты","минут");
+}
 
 function plan(){
   const t = today(), all = allWords();
@@ -328,7 +348,7 @@ function renderHome(){
   const started = all.filter(function(w){ return P(w).box>0; }).length;
 
   const hist = [];
-  for(let i=13;i>=0;i--){ const d = plusDays(-i); hist.push({d:d, n:(S.history[d]||0)}); }
+  for(let i=13;i>=0;i--){ const d = plusDays(-i); hist.push({d:d, n:dayRec(d).n}); }
   let maxN = 6; hist.forEach(function(h){ if(h.n>maxN) maxN=h.n; });
   const bars = hist.map(function(h){
     const cls = (h.n>0?"on":"") + (h.d===today()?" today":"");
@@ -337,7 +357,7 @@ function renderHome(){
   }).join("");
 
   let streak = 0;
-  for(let i=0;i<400;i++){ const d = plusDays(-i); if(S.history[d]>0) streak++; else if(i>0) break; }
+  for(let i=0;i<400;i++){ const d = plusDays(-i); if(dayRec(d).n>0) streak++; else if(i>0) break; }
 
   screenEl.innerHTML =
   '<div class="card plan">'+
@@ -361,11 +381,13 @@ function renderHome(){
     '<button class="btn ghost" id="list">Все слова · '+all.length+'</button>'+
   '</div>'+
   (total===0 && all.length ? '<div class="note" style="text-align:center">Следующее повторение — '+nextDate()+'. Можно прогнать слова перед диктантом.</div>' : "")+
-  '<button class="textbtn" id="backup">Голос, скорость, резервная копия</button>';
+  '<div class="links"><button class="textbtn" id="report">Отчёт</button>'+
+    '<button class="textbtn" id="backup">Голос и настройки</button></div>';
 
   const g = document.getElementById("go"); if(g) g.onclick = function(){ startSession("daily"); };
   document.getElementById("drill").onclick  = renderDrillPick;
   document.getElementById("list").onclick   = renderList;
+  document.getElementById("report").onclick = renderReport;
   document.getElementById("backup").onclick = renderSettings;
 }
 function estimate(a,b){ return "≈"+Math.max(3, Math.round((a*45 + b*12)/60))+" мин"; }
@@ -383,20 +405,52 @@ function startSession(mode, subset){
     shuffle(pl.fresh).forEach(function(w){ steps.push({w:w, t:"choice"}); });
     shuffle(pl.fresh.concat(pl.due.filter(function(w){ return P(w).box<=1; })))
       .filter(buildable).forEach(function(w){ steps.push({w:w, t:"build"}); });
-    shuffle(pl.fresh.concat(pl.due)).forEach(function(w){ steps.push({w:w, t:"write"}); });
+    const towrite = pl.fresh.concat(pl.due);
+    shuffle(towrite).forEach(function(w){ steps.push({w:w, t:"write"}); });
+    /* Слова, которые он забывал или не вспомнил, спрашиваем в этот вечер лишний
+       раз — пока не переберутся в коробку 3. */
+    shuffle(towrite.filter(hardWord)).forEach(function(w){ steps.push({w:w, t:"write", retry:true}); });
   }else{
     shuffle(subset).forEach(function(w){ steps.push({w:w, t:"write"}); });
   }
   if(!steps.length){ renderHome(); return; }
-  session = {mode:mode, steps:steps, i:0, done:0, wrong:0, total:steps.length, mistakes:[]};
+  session = {mode:mode, steps:steps, i:0, done:0, wrong:0, total:steps.length, mistakes:[],
+             lastTick:Date.now(), sec:0};
   renderStep();
 }
+/* Учёт времени. Пауза длиннее двух минут — это не занятие, а отложенный телефон:
+   такой промежуток не засчитываем. */
+function tick(){
+  if(!session) return;
+  const now = Date.now();
+  const d = Math.min(now - session.lastTick, 120000);
+  session.lastTick = now;
+  if(d <= 0) return;
+  const s = Math.round(d/1000);
+  session.sec += s;
+  const r = dayRec(today()); r.sec += s; setDay(today(), r);
+}
 function advance(){
+  tick();
   session.i++; session.done++;
   if(session.i >= session.steps.length) return renderFinish();
   renderStep();
 }
-function requeue(w){ session.steps.push({w:w, t:"write", retry:true}); session.total = session.steps.length; }
+/* Вернуть слово в очередь этого же занятия. Первый повтор ставим не в самый
+   конец, а через несколько шагов — вспоминать через паузу полезнее, чем подряд. */
+function requeue(w, times){
+  times = times || 1;
+  for(let k=0;k<times;k++){
+    const step = {w:w, t:"write", retry:true};
+    const left = session.steps.length - session.i;
+    if(k===0 && left > 3){
+      session.steps.splice(session.i + 2 + Math.floor(Math.random()*(left-2)), 0, step);
+    }else{
+      session.steps.push(step);
+    }
+  }
+  session.total = session.steps.length;
+}
 
 function sessionHead(label){
   const pct = Math.round((session.done/Math.max(1,session.total))*100);
@@ -407,7 +461,7 @@ function sessionHead(label){
 }
 function wireQuit(){
   const q = document.getElementById("quit");
-  if(q) q.onclick = function(){ session=null; renderHome(); };
+  if(q) q.onclick = function(){ tick(); session=null; renderHome(); };
 }
 function renderStep(){
   const st = session.steps[session.i];
@@ -433,6 +487,20 @@ function stepIntro(w){
   say(w.en);
 }
 
+/* Честное «не помню». Это не ошибка: в проценте верных ответов не участвует,
+   но на расписание влияет сильнее ошибки — слово откатывается и возвращается
+   в этот же вечер. */
+function markUnknown(w){
+  if(session.mode !== "daily") return;
+  const p = P(w);
+  p.unknown = (p.unknown||0) + 1;
+  p.box = Math.min(p.box, 1);
+  p.due = today();
+  setP(w, p); saveState();
+  if(session.mistakes.indexOf(w) < 0) session.mistakes.push(w);
+  const r = dayRec(today()); r.skip = (r.skip||0) + 1; setDay(today(), r);
+}
+
 /* фаза 2 — узнавание EN → RU */
 function stepChoice(w){
   const pool = shuffle(allWords().filter(function(x){ return key(x)!==key(w); })).slice(0,3);
@@ -442,19 +510,27 @@ function stepChoice(w){
     '<div class="word-en">'+esc(w.en)+'</div><button class="speak" id="sp">🔊</button>'+
   '</div><div class="opts">'+
     opts.map(function(o,i){ return '<button class="opt" data-i="'+i+'">'+esc(o.ru)+'</button>'; }).join("")+
-  '</div></div>';
+  '</div><button class="btn ghost" id="dunno">Не помню</button></div>';
   wireQuit();
   document.getElementById("sp").onclick = function(){ say(w.en); };
   const btns = Array.prototype.slice.call(document.querySelectorAll(".opt"));
+  function reveal(){
+    btns.forEach(function(x,j){ x.disabled=true; if(key(opts[j])===key(w)) x.classList.add("good"); });
+    document.getElementById("dunno").disabled = true;
+    say(w.en);
+  }
   btns.forEach(function(b,i){
     b.onclick = function(){
       const ok = key(opts[i])===key(w);
-      btns.forEach(function(x,j){ x.disabled=true; if(key(opts[j])===key(w)) x.classList.add("good"); });
-      if(!ok) b.classList.add("bad");
-      say(w.en);
-      setTimeout(advance, ok?550:1500);
+      reveal();
+      if(!ok){ b.classList.add("bad"); markUnknown(w); }
+      setTimeout(advance, ok?550:1800);
     };
   });
+  document.getElementById("dunno").onclick = function(){
+    reveal(); markUnknown(w);
+    setTimeout(advance, 1800);
+  };
 }
 
 /* фаза 3 — сборка слова из букв */
@@ -469,7 +545,8 @@ function stepBuild(w){
   '</div>'+
   '<div class="slots" id="slots"></div>'+
   '<div class="tiles">'+tiles.map(function(t,i){ return '<button class="tile" data-i="'+i+'">'+esc(t.ch===" "?"␣":t.ch)+'</button>'; }).join("")+'</div>'+
-  '<button class="btn ghost" id="undo">← Стереть букву</button></div>';
+  '<div class="row"><button class="btn ghost" id="undo">← Стереть</button>'+
+    '<button class="btn ghost" id="dunno">Не помню</button></div></div>';
   wireQuit();
 
   const slotsEl = document.getElementById("slots");
@@ -502,6 +579,15 @@ function stepBuild(w){
     for(let k=0;k<tiles.length;k++){ if(tiles[k].i===last.i){ tileEls[k].classList.remove("used"); break; } }
     draw();
   };
+  document.getElementById("dunno").onclick = function(){
+    markUnknown(w);
+    tileEls.forEach(function(t){ t.disabled=true; });
+    document.getElementById("undo").disabled = true;
+    document.getElementById("dunno").disabled = true;
+    slotsEl.innerHTML = '<span class="spell"><span class="ok">'+esc(w.en)+'</span></span>';
+    say(w.en);
+    setTimeout(advance, 2000);
+  };
   draw();
 }
 
@@ -525,13 +611,39 @@ function stepWrite(w, isRetry){
     (w.tr ? '<div class="tr">['+esc(w.tr)+']</div>' : "")+
   '</div>'+
   '<input class="answer" id="ans" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">'+
-  '<div id="act"><button class="btn" id="ok">Проверить</button></div></div>';
+  '<div id="act"><button class="btn" id="ok">Проверить</button>'+
+    '<button class="btn ghost" id="dunno" style="margin-top:8px">Не помню</button></div></div>';
   wireQuit();
 
   const inp = document.getElementById("ans");
   inp.focus();
   document.getElementById("ok").onclick = check;
+  document.getElementById("dunno").onclick = giveUp;
   inp.addEventListener("keydown", function(e){ if(e.key==="Enter"){ e.preventDefault(); check(); } });
+
+  /* Показать ответ и кнопку «дальше». kind: ok | no | tell */
+  function reveal(kind, got){
+    say(w.en);
+    inp.disabled = true;
+    const titles = {ok:"Верно", no:"Ошибка", tell:"Запоминай"};
+    document.getElementById("act").innerHTML =
+      '<div class="verdict '+kind+'">'+
+        '<span class="lbl">'+titles[kind]+'</span>'+
+        (got !== null ? '<span class="spell">'+diff(got, w.en)+'</span>' : "")+
+        (kind === "ok" ? "" : '<span class="right">'+esc(w.en)+'</span>')+
+        (w.ex ? '<span class="hint">'+esc(w.ex)+'</span>' : "")+
+      '</div>'+
+      '<button class="btn" id="nx" style="margin-top:10px">'+(kind==="ok" ? "Дальше" : "Понял, дальше")+'</button>';
+    const nb = document.getElementById("nx");
+    nb.onclick = advance;
+    nb.focus();
+  }
+
+  function giveUp(){
+    markUnknown(w);
+    if(!isRetry) requeue(w, 2);      // вернётся в этот же вечер дважды
+    reveal("tell", null);
+  }
 
   function check(){
     const got = inp.value.replace(/\s+/g," ").trim();
@@ -539,36 +651,31 @@ function stepWrite(w, isRetry){
     const ok = norm(got) === norm(w.en);
     if(session.mode==="daily"){
       const p = P(w);
-      if(ok){ p.right++; p.box = Math.min(p.box+1, INT.length-1); p.due = plusDays(INT[p.box]); }
+      if(ok){
+        p.right++; p.box = Math.min(p.box+1, INT.length-1); p.due = plusDays(INT[p.box]);
+        if(p.box>=4 && !p.learnedAt) p.learnedAt = today();   // слово ушло в долгую память
+      }
       else  { p.wrong++; p.box = 1; p.due = plusDays(1); }
       setP(w,p); saveState();
+
+      const r = dayRec(today());
+      if(!isRetry) r.n++;
+      if(ok) r.ok++; else r.bad++;
+      setDay(today(), r);
     }
     if(!ok){
       session.wrong++;
       if(session.mistakes.indexOf(w)<0) session.mistakes.push(w);
       if(!isRetry) requeue(w);
     }
-    say(w.en);
-    inp.disabled = true;
-    document.getElementById("act").innerHTML =
-      '<div class="verdict '+(ok?"ok":"no")+'">'+
-        '<span class="lbl">'+(ok?"Верно":"Ошибка")+'</span>'+
-        '<span class="spell">'+diff(got, w.en)+'</span>'+
-        (ok ? "" : '<span class="right">'+esc(w.en)+'</span>')+
-        (ok && w.ex ? '<span class="hint">'+esc(w.ex)+'</span>' : "")+
-      '</div>'+
-      '<button class="btn" id="nx" style="margin-top:10px">'+(ok?"Дальше":"Понял, дальше")+'</button>';
-    const nb = document.getElementById("nx");
-    nb.onclick = advance;
-    nb.focus();
+    reveal(ok ? "ok" : "no", got);
   }
 }
 
 /* ---------- итог вечера ---------- */
 function renderFinish(){
-  const t = today();
+  tick();
   const passed = session.steps.filter(function(s){ return s.t==="write" && !s.retry; }).length;
-  if(session.mode==="daily"){ S.history[t] = (S.history[t]||0) + passed; saveState(); }
   const nextIn = allWords().map(function(w){ return P(w).due; }).filter(Boolean).sort()[0];
   const score = Math.round(((session.total - session.wrong)/Math.max(1,session.total))*100);
 
@@ -576,7 +683,7 @@ function renderFinish(){
   '<div class="card done">'+
     '<div class="big">'+score+'%</div>'+
     '<h2>'+(session.wrong===0 ? "Ни одной ошибки" : "Готово")+'</h2>'+
-    '<div class="note">'+passed+' '+plural(passed,"слово","слова","слов")+' пройдено'+
+    '<div class="note">'+passed+' '+plural(passed,"слово","слова","слов")+' пройдено за '+fmtMin(session.sec)+
       (nextIn ? '. Следующее повторение — '+new Date(nextIn+"T12:00:00").toLocaleDateString("ru-RU",{day:"numeric",month:"long"}) : "")+'</div>'+
   '</div>'+
   (session.mistakes.length
@@ -584,8 +691,10 @@ function renderFinish(){
       session.mistakes.map(function(w){ return '<div class="wrow"><span class="en">'+esc(w.en)+'</span><span class="ru">'+esc(w.ru)+'</span></div>'; }).join("")+
       '</div></div>'
     : "")+
-  '<button class="btn" id="home">На главную</button>';
+  '<div class="row"><button class="btn ghost" id="rep">Отчёт маме</button>'+
+    '<button class="btn" id="home">На главную</button></div>';
   document.getElementById("home").onclick = function(){ session=null; renderHome(); };
+  document.getElementById("rep").onclick  = function(){ session=null; renderReport(); };
 }
 
 /* ---------- репетиция перед диктантом ---------- */
@@ -677,6 +786,110 @@ function parse(text){
     if(!/[a-zA-Z]/.test(en)) return null;
     return {en:en, ru:parts[1], tr:tr, ex:parts[2]||"", exru:parts[3]||""};
   }).filter(Boolean);
+}
+
+/* ---------- отчёт ---------- */
+function reportData(){
+  const t = today(), all = allWords();
+  const td = dayRec(t);
+  const answered = td.ok + td.bad;
+
+  let wSec=0, wN=0, wDays=0;
+  for(let i=0;i<7;i++){
+    const r = dayRec(plusDays(-i));
+    wSec += r.sec; wN += r.n; if(r.n>0) wDays++;
+  }
+  const learnedToday = all.filter(function(w){ return P(w).learnedAt === t; });
+  const hard = all.filter(function(w){ return troubles(w) >= 2; })
+                  .sort(function(a,b){ return troubles(b) - troubles(a); }).slice(0,6);
+  const longTerm = all.filter(function(w){ return P(w).box >= 4; });
+
+  return {t:t, td:td, answered:answered,
+          acc: answered ? Math.round(td.ok/answered*100) : 0,
+          wSec:wSec, wN:wN, wDays:wDays,
+          learnedToday:learnedToday, hard:hard, longTerm:longTerm, all:all};
+}
+
+function reportText(){
+  const d = reportData();
+  const day = new Date().toLocaleDateString("ru-RU",{day:"numeric",month:"long"});
+  let s = "Слова на завтра — "+day+"\n";
+  s += "Занимался: "+fmtMin(d.td.sec)+"\n";
+  s += "Слов пройдено: "+d.td.n+"\n";
+  s += d.answered ? ("Написано верно: "+d.td.ok+" из "+d.answered+" ("+d.acc+"%)\n") : "";
+  if(d.td.skip) s += "Не смог вспомнить: "+d.td.skip+"\n";
+  if(d.learnedToday.length) s += "Выучил насовсем: "+d.learnedToday.map(function(w){ return w.en; }).join(", ")+"\n";
+  if(d.hard.length) s += "Западают: "+d.hard.map(function(w){ return w.en; }).join(", ")+"\n";
+  s += "За неделю: "+d.wDays+" "+plural(d.wDays,"день","дня","дней")+", "+fmtMin(d.wSec)+", "+d.wN+" "+plural(d.wN,"слово","слова","слов")+"\n";
+  s += "В долгой памяти: "+d.longTerm.length+" из "+d.all.length;
+  return s;
+}
+
+function renderReport(){
+  const d = reportData();
+  const wlist = function(arr, extra){
+    return '<div class="card wlist">'+arr.map(function(w){
+      return '<div class="wrow"><span class="en">'+esc(w.en)+'</span><span class="ru">'+esc(w.ru)+'</span>'+
+             (extra ? '<span class="ct" style="font-family:\'Atkinson Hyperlegible\',monospace;font-size:12px;color:var(--red)">'+extra(w)+'</span>' : "")+'</div>';
+    }).join("")+'</div>';
+  };
+
+  screenEl.innerHTML =
+  '<div class="card plan">'+
+    '<div class="planhead"><h2>Сегодня</h2><span class="when">'+new Date().toLocaleDateString("ru-RU",{day:"numeric",month:"long"})+'</span></div>'+
+    '<div class="counts">'+
+      '<div class="count '+(d.td.sec?"new":"zero")+'"><b>'+Math.max(0,Math.round(d.td.sec/60))+'</b><span>минут занимался</span></div>'+
+      '<div class="count '+(d.td.n?"new":"zero")+'"><b>'+d.td.n+'</b><span>слов пройдено</span></div>'+
+      '<div class="count '+(d.acc>=80?"rev":(d.answered?"new":"zero"))+'"><b>'+(d.answered?d.acc+"%":"—")+'</b><span>написано верно</span></div>'+
+    '</div>'+
+    (d.answered || d.td.skip
+      ? '<div class="note">'+
+          (d.answered ? 'Из '+d.answered+' '+plural(d.answered,"ответа","ответов","ответов")+' верных '+d.td.ok+', с ошибкой '+d.td.bad+'. ' : '')+
+          (d.td.skip ? '<b>Не смог вспомнить: '+d.td.skip+'</b> — в процент не входит.' : '')+
+        '</div>'
+      : '<div class="note">Сегодня ещё не занимался.</div>')+
+  '</div>'+
+
+  (d.learnedToday.length ? '<div class="unit">Ушло в долгую память сегодня</div>'+wlist(d.learnedToday, null) : "")+
+
+  (d.hard.length
+    ? '<div class="unit">Западают — стоит повторить вместе</div>'+
+      wlist(d.hard, function(w){
+        const p = P(w), parts = [];
+        if(p.wrong) parts.push(p.wrong+" ош.");
+        if(p.unknown) parts.push(p.unknown+" «не помню»");
+        return parts.join(", ");
+      })
+    : "")+
+
+  '<div class="card plan">'+
+    '<div class="planhead"><h2>За неделю</h2></div>'+
+    '<div class="counts">'+
+      '<div class="count '+(d.wDays?"rev":"zero")+'"><b>'+d.wDays+'</b><span>дней из 7</span></div>'+
+      '<div class="count '+(d.wSec?"rev":"zero")+'"><b>'+Math.round(d.wSec/60)+'</b><span>минут всего</span></div>'+
+      '<div class="count '+(d.longTerm.length?"rev":"zero")+'"><b>'+d.longTerm.length+'</b><span>слов знает твёрдо</span></div>'+
+    '</div>'+
+    '<div class="note">Всего слов в приложении — '+d.all.length+'. «Знает твёрдо» — это слова, которые он верно написал минимум четыре раза с растущими перерывами.</div>'+
+  '</div>'+
+
+  '<button class="btn" id="send">Отправить маме</button>'+
+  '<div class="note" id="msg"></div>'+
+  '<button class="btn ghost" id="back">На главную</button>';
+
+  document.getElementById("back").onclick = renderHome;
+  document.getElementById("send").onclick = function(){
+    const text = reportText();
+    const msg = document.getElementById("msg");
+    if(navigator.share){
+      navigator.share({title:"Отчёт по английскому", text:text})
+        .then(function(){ msg.textContent = "Отправлено."; })
+        .catch(function(){});
+    }else if(navigator.clipboard){
+      navigator.clipboard.writeText(text).then(function(){ msg.textContent = "Отчёт скопирован — вставь его в сообщение маме."; });
+    }else{
+      msg.textContent = text;
+    }
+  };
 }
 
 /* ---------- настройки: голос, скорость, резервная копия ---------- */
